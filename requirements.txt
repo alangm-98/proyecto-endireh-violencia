@@ -1,0 +1,5 @@
+polars==1.44.2
+pyarrow==25.0.1
+numpy==2.5.3
+matplotlib==3.11.2
+jupyterlab==4.6.3
