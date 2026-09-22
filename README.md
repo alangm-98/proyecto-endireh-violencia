@@ -58,8 +58,8 @@ Requiere **Python 3.10 o superior**; el proyecto se desarrolló con Python 3.14.
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/PippuPippu17/proyecto-endireh-violencia-.git
-cd proyecto-endireh-violencia-
+git clone https://github.com/alangm-98/proyecto-endireh-violencia.git
+cd proyecto-endireh-violencia
 
 # 2. Crear y activar el entorno virtual
 python -m venv env
