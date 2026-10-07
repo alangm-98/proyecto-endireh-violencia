@@ -1,13 +1,15 @@
 """
 Gráficas del análisis exploratorio de la ENDIREH 2021.
 
-Construye cinco figuras y las guarda en reports/figuras/:
+Construye siete figuras y las guarda en reports/figuras/:
 
     01_distribucion_edad_primer_union.png
     02_ingreso_por_violencia.png
     03_prevalencia_por_entidad.png
     04_prevalencia_por_estado_civil.png
     05_escolaridad_muestra_vs_poblacion.png
+    06_distribucion_ingreso_pareja.png
+    07_boxplot_ingreso_por_violencia.png
 
 Uso:
     python3 src/visualization/graficas.py
@@ -21,12 +23,14 @@ import matplotlib
 # Agg dibuja en memoria; permite generar las figuras sin entorno gráfico.
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 from matplotlib.transforms import blended_transform_factory
 import numpy as np
 import polars as pl
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
+from src.visualization.eda import medidas_localizacion
 
 # Paleta común a todas las figuras.
 SUPERFICIE = "#fcfcfb"
@@ -408,6 +412,161 @@ def figura_05_escolaridad(df: pl.DataFrame) -> None:
     guardar(fig, "05_escolaridad_muestra_vs_poblacion.png")
 
 
+def figura_06_distribucion_ingreso(df: pl.DataFrame) -> None:
+    """
+    Histograma ponderado de ingreso_pareja.
+
+    Cada barra suma el factor de expansión de un intervalo de 500 pesos. Marca
+    la media y la mediana ponderadas y corta el eje en 20,000 pesos.
+    """
+    sub = df.filter(pl.col("ingreso_pareja").is_not_null())
+    m = medidas_localizacion(sub["ingreso_pareja"], sub["factor_expansion"])
+    tope, ancho = 20_000, 500
+    visible = sub.filter(pl.col("ingreso_pareja") <= tope)
+    pct_fuera = 100 * (1 - visible["factor_expansion"].sum() / m["poblacion"])
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.hist(
+        visible["ingreso_pareja"].to_numpy(),
+        bins=np.arange(0, tope + ancho, ancho),
+        weights=visible["factor_expansion"].to_numpy(),
+        color=AZUL,
+        edgecolor=SUPERFICIE,
+        linewidth=0.4,
+    )
+    ax.axvline(
+        m["mediana_pond"],
+        color=NARANJA,
+        linewidth=1.8,
+        label=f"Mediana ponderada: ${m['mediana_pond']:,.0f}",
+    )
+    ax.axvline(
+        m["media_pond"],
+        color=NARANJA,
+        linewidth=1.8,
+        linestyle="--",
+        label=f"Media ponderada: ${m['media_pond']:,.0f}",
+    )
+
+    ax.set_xlim(0, tope)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v / 1e6:.1f}"))
+    preparar_ejes(ax)
+    ax.legend(frameon=False, loc="upper right", fontsize=9.5)
+    titular(
+        ax,
+        "Distribución del ingreso de la pareja",
+        "Población estimada por intervalo de 500 pesos, con su media y su mediana",
+    )
+    ax.set_xlabel("Ingreso de la pareja (pesos)")
+    ax.set_ylabel("Mujeres (millones)")
+    pie_de_figura(
+        ax,
+        f"ENDIREH 2021 (INEGI). n = {m['n']:,} registros con ingreso de la pareja, "
+        f"que representan a {m['poblacion']:,.0f} mujeres;\n"
+        f"incluye valores imputados. El eje se corta en {tope:,} pesos: queda fuera "
+        f"el {pct_fuera:.1f}% de esa población,\n"
+        f"con ingresos de hasta {sub['ingreso_pareja'].max():,.0f} pesos.",
+    )
+    guardar(fig, "06_distribucion_ingreso_pareja.png")
+
+
+def resumen_caja(valores: pl.Series) -> dict:
+    """
+    Devuelve los valores con que se dibuja un diagrama de caja.
+
+    Los cuartiles usan interpolación lineal. Los bigotes llegan al último valor
+    que queda dentro de 1.5 veces el rango intercuartílico contado desde la
+    caja; n_atipicos cuenta los valores que quedan más allá.
+    """
+    q1, med, q3 = (
+        valores.quantile(q, interpolation="linear") for q in (0.25, 0.50, 0.75)
+    )
+    margen = 1.5 * (q3 - q1)
+    dentro = valores.filter((valores >= q1 - margen) & (valores <= q3 + margen))
+    return {
+        "q1": q1,
+        "med": med,
+        "q3": q3,
+        "whislo": dentro.min(),
+        "whishi": dentro.max(),
+        "n": valores.len(),
+        "n_atipicos": valores.len() - dentro.len(),
+    }
+
+
+def figura_07_boxplot_ingreso(df: pl.DataFrame) -> None:
+    """
+    Diagrama de caja de ingreso_pareja para los dos grupos.
+
+    Usa cuartiles sin ponderar, escala lineal y no dibuja los valores atípicos.
+    """
+    sub = df.filter(pl.col("ingreso_pareja").is_not_null())
+    sin = resumen_caja(
+        sub.filter(pl.col("sufrio_violencia_pareja") == 0)["ingreso_pareja"]
+    )
+    con = resumen_caja(
+        sub.filter(pl.col("sufrio_violencia_pareja") == 1)["ingreso_pareja"]
+    )
+    grupos = [
+        ("Reportó violencia", con, NARANJA),
+        ("No reportó violencia", sin, AZUL),
+    ]
+
+    claves = ("q1", "med", "q3", "whislo", "whishi")
+
+    fig, ax = plt.subplots(figsize=(9, 4.2))
+    cajas = ax.bxp(
+        [{clave: g[clave] for clave in claves} for _, g, _ in grupos],
+        positions=range(len(grupos)),
+        orientation="horizontal",
+        widths=0.46,
+        showfliers=False,
+        patch_artist=True,
+        medianprops=dict(color=TINTA, linewidth=2),
+        whiskerprops=dict(color=TINTA_SUAVE, linewidth=1.2),
+        capprops=dict(color=TINTA_SUAVE, linewidth=1.2),
+        boxprops=dict(edgecolor=SUPERFICIE, linewidth=0.8),
+    )
+    for caja, (_, _, color) in zip(cajas["boxes"], grupos):
+        caja.set_facecolor(color)
+    for y, (_, g, _) in enumerate(grupos):
+        ax.text(
+            g["q1"],
+            y + 0.33,
+            f"Q1 ${g['q1']:,.0f}  ·  Mediana ${g['med']:,.0f}  ·  Q3 ${g['q3']:,.0f}",
+            va="bottom",
+            fontsize=9,
+            color=TINTA_SUAVE,
+        )
+
+    limite = max(g["whishi"] for _, g, _ in grupos)
+    ax.set_xlim(-0.02 * limite, 1.05 * limite)
+    ax.set_ylim(-0.6, len(grupos) - 0.2)
+    ax.set_yticks(range(len(grupos)), [nombre for nombre, _, _ in grupos])
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    preparar_ejes(ax, eje_valor="x")
+    titular(
+        ax,
+        "Ingreso de la pareja según si se reportó violencia",
+        "Diagrama de caja con cuartiles sin ponderar; no se dibujan los valores atípicos",
+    )
+    ax.set_xlabel("Ingreso de la pareja (pesos)")
+    pie_de_figura(
+        ax,
+        f"ENDIREH 2021 (INEGI). n = {con['n']:,} con violencia y {sin['n']:,} sin "
+        "violencia; incluye ingresos en cero y valores imputados.\n"
+        "Los bigotes llegan al último valor dentro de 1.5 veces el rango "
+        "intercuartílico.\n"
+        f"No se dibujan los valores atípicos: {con['n_atipicos']:,} con violencia "
+        f"({100 * con['n_atipicos'] / con['n']:.1f}%) y {sin['n_atipicos']:,} sin "
+        f"violencia ({100 * sin['n_atipicos'] / sin['n']:.1f}%).\n"
+        "La diferencia entre grupos describe lo reportado en la encuesta y no permite "
+        "establecer causalidad.",
+    )
+    guardar(fig, "07_boxplot_ingreso_por_violencia.png")
+
+
 # --------------------------------------------------------------------------
 
 
@@ -425,7 +584,9 @@ def generar_graficas() -> None:
     figura_03_prevalencia_entidad(df)
     figura_04_prevalencia_estado_civil(df)
     figura_05_escolaridad(df)
-    print("[graficas] Listo: 5 figuras generadas.")
+    figura_06_distribucion_ingreso(df)
+    figura_07_boxplot_ingreso(df)
+    print("[graficas] Listo: 7 figuras generadas.")
 
 
 if __name__ == "__main__":

@@ -1,16 +1,16 @@
 """
 Análisis exploratorio de la ENDIREH 2021.
 
-Calcula e imprime las medidas descriptivas de los Pasos 5, 6 y 7 sobre el
-dataset ya preprocesado: moda y frecuencias de las cualitativas, medidas de
-localización en versión simple y ponderada, y medidas de variabilidad
-comparando el grupo que reportó violencia de pareja contra el que no.
+Calcula e imprime las medidas descriptivas del dataset ya preprocesado: moda
+y frecuencias de las cualitativas, medidas de localización en versión simple
+y ponderada, y medidas de variabilidad comparando el grupo que reportó
+violencia de pareja contra el que no.
 
 Cada variable se filtra por separado. Los valores se toman completos, y las
 incompatibilidades entre una variable y su nombre se reportan como avisos junto
 a la medida correspondiente.
 
-Las funciones seccion_* son el punto de entrada que usa el notebook.
+Las funciones seccion_* son el punto de entrada que usan los notebooks.
 
 Uso:
     python3 src/visualization/eda.py
@@ -243,28 +243,40 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
 # --------------------------------------------------------------------------
 
 
-def seccion_localizacion(df: pl.DataFrame) -> None:
-    """Imprime las medidas de localización de las variables cuantitativas."""
-    titulo("PASO 6: MEDIDAS DE LOCALIZACIÓN")
+def seccion_localizacion(
+    df: pl.DataFrame, columnas: list[str] = VARIABLES_CUANTITATIVAS
+) -> None:
+    """
+    Imprime las medidas de localización de las columnas indicadas.
+
+    Sin el argumento columnas recorre todas las variables cuantitativas.
+    """
+    titulo("MEDIDAS DE LOCALIZACIÓN")
     print("\nLa media ponderada usa factor_expansion. La mediana, los cuartiles y")
     print("los percentiles ponderados se calculan con una función propia, porque")
     print("ni polars ni numpy ofrecen cuantiles con pesos.")
 
-    for columna in VARIABLES_CUANTITATIVAS:
+    for columna in columnas:
         sub = serie_valida(df, columna)
         m = medidas_localizacion(sub[columna], sub["factor_expansion"])
         imprimir_localizacion(columna, m, alertas_de_coherencia(columna, sub[columna]))
 
 
-def seccion_variabilidad(df: pl.DataFrame) -> None:
-    """Imprime la comparación de dispersión entre los grupos con y sin violencia."""
-    titulo("PASO 7: MEDIDAS DE VARIABILIDAD")
+def seccion_variabilidad(
+    df: pl.DataFrame, columnas: list[str] = VARIABLES_CUANTITATIVAS
+) -> None:
+    """
+    Imprime la dispersión de las columnas indicadas, en total y por grupo.
+
+    Compara el grupo que reportó violencia de pareja contra el que no. Sin
+    el argumento columnas recorre todas las variables cuantitativas.
+    """
+    titulo("MEDIDAS DE VARIABILIDAD")
     print("\nComparación entre el grupo que reportó violencia de pareja y el que no.")
     print("Las medidas van sin ponderar: el CV compara dispersión relativa dentro")
-    print("de cada grupo, no estima un total poblacional. Es una limitación a")
-    print("declarar en el reporte.")
+    print("de cada grupo, no estima un total poblacional.")
 
-    for columna in VARIABLES_CUANTITATIVAS:
+    for columna in columnas:
         sub = serie_valida(df, columna)
         total = medidas_variabilidad(sub[columna])
         con = medidas_variabilidad(
@@ -278,7 +290,7 @@ def seccion_variabilidad(df: pl.DataFrame) -> None:
 
 def seccion_cualitativas(df: pl.DataFrame) -> None:
     """Imprime moda y tabla de frecuencias de las variables cualitativas."""
-    titulo("PASO 5: VARIABLES CUALITATIVAS (moda y frecuencias)")
+    titulo("VARIABLES CUALITATIVAS (moda y frecuencias)")
     print("\nEn una variable cualitativa la única medida de tendencia central")
     print("válida es la moda. En una ordinal además tiene sentido la mediana,")
     print("pero nunca la media.")
