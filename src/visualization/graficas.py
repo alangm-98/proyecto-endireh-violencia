@@ -1,7 +1,7 @@
 """
 Gráficas del análisis exploratorio de la ENDIREH 2021.
 
-Construye siete figuras y las guarda en reports/figuras/:
+Construye ocho figuras y las guarda en reports/figuras/:
 
     01_distribucion_edad_primer_union.png
     02_ingreso_por_violencia.png
@@ -10,6 +10,7 @@ Construye siete figuras y las guarda en reports/figuras/:
     05_escolaridad_muestra_vs_poblacion.png
     06_distribucion_ingreso_pareja.png
     07_boxplot_ingreso_por_violencia.png
+    08_heterogeneidad_iqv.png
 
 Uso:
     python3 src/visualization/graficas.py
@@ -31,6 +32,7 @@ import polars as pl
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
 from src.visualization.eda import medidas_localizacion
+from src.visualization.indices import tabla_heterogeneidad
 
 # Paleta común a todas las figuras.
 SUPERFICIE = "#fcfcfb"
@@ -39,6 +41,14 @@ TINTA_SUAVE = "#52514e"
 AZUL = "#2a78d6"  # categoría 1 / serie única
 NARANJA = "#eb6834"  # categoría 2
 GRIS_RETICULA = "#d8d7d2"
+
+# Nombre con que cada variable aparece en las figuras.
+NOMBRES_VARIABLES = {
+    "estado_civil_desc": "Estado conyugal",
+    "estrato_socioeconomico": "Estrato socioeconómico",
+    "nom_entidad": "Entidad federativa",
+    "sufrio_violencia_pareja": "Violencia de pareja reportada",
+}
 
 # Valores por omisión de matplotlib para todo el módulo.
 plt.rcParams.update(
@@ -567,6 +577,45 @@ def figura_07_boxplot_ingreso(df: pl.DataFrame) -> None:
     guardar(fig, "07_boxplot_ingreso_por_violencia.png")
 
 
+def figura_08_heterogeneidad(df: pl.DataFrame) -> None:
+    """
+    Barras con el IQV ponderado de las variables cualitativas.
+
+    Ordena las variables de mayor a menor IQV y anota junto a cada una su
+    número de categorías.
+    """
+    tabla = tabla_heterogeneidad(df).sort("iqv")
+    etiquetas = [
+        f"{NOMBRES_VARIABLES[fila['variable']]}\n{fila['k']} categorías"
+        for fila in tabla.iter_rows(named=True)
+    ]
+    valores = tabla["iqv"].to_list()
+
+    fig, ax = plt.subplots(figsize=(9, 4.4))
+    ax.barh(etiquetas, valores, color=AZUL, height=0.6)
+    for y, v in enumerate(valores):
+        ax.text(v + 0.012, y, f"{v:.3f}", va="center", fontsize=9.5, color=TINTA_SUAVE)
+
+    ax.set_xlim(0, 1.1)
+    ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    preparar_ejes(ax, eje_valor="x")
+    titular(
+        ax,
+        "Heterogeneidad de las variables cualitativas",
+        "Índice de variación cualitativa (IQV): 0 si una categoría reúne todo, "
+        "1 si todas pesan igual",
+    )
+    ax.set_xlabel("IQV")
+    pie_de_figura(
+        ax,
+        f"ENDIREH 2021 (INEGI). n = {df.height:,} registros; la proporción de cada "
+        "categoría se pondera por factor_expansion.\n"
+        "El IQV divide el índice de Gini-Simpson entre su máximo, (k-1)/k, lo que "
+        "permite comparar variables\ncon distinto número de categorías.",
+    )
+    guardar(fig, "08_heterogeneidad_iqv.png")
+
+
 # --------------------------------------------------------------------------
 
 
@@ -586,7 +635,8 @@ def generar_graficas() -> None:
     figura_05_escolaridad(df)
     figura_06_distribucion_ingreso(df)
     figura_07_boxplot_ingreso(df)
-    print("[graficas] Listo: 7 figuras generadas.")
+    figura_08_heterogeneidad(df)
+    print("[graficas] Listo: 8 figuras generadas.")
 
 
 if __name__ == "__main__":

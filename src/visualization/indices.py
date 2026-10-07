@@ -25,6 +25,7 @@ from scipy.stats import entropy
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import RUTA_ENDIREH_LIMPIO
+from src.visualization.eda import titulo
 
 # Variables cualitativas sobre las que se miden los índices de heterogeneidad.
 VARIABLES_HETEROGENEIDAD = [
@@ -136,6 +137,57 @@ def entropia_normalizada(frecuencias) -> float:
     if k < 2:
         raise ValueError("La entropía normalizada necesita al menos dos categorías.")
     return entropia_shannon(frecuencias) / float(np.log2(k))
+
+
+def tabla_heterogeneidad(
+    df: pl.DataFrame,
+    columnas: list[str] = VARIABLES_HETEROGENEIDAD,
+    ponderada: bool = True,
+) -> pl.DataFrame:
+    """
+    Devuelve una fila por variable con sus índices de heterogeneidad.
+
+    Con ponderada=True las proporciones salen de la población de cada
+    categoría; con False, de su frecuencia en la muestra. entropia_maxima es
+    log2(k).
+    """
+    peso = "poblacion" if ponderada else "frecuencia"
+    filas = []
+    for columna in columnas:
+        frecuencias = tabla_frecuencias(df, columna)[peso]
+        filas.append(
+            {
+                "variable": columna,
+                "k": frecuencias.len(),
+                "gini_simpson": gini_simpson(frecuencias),
+                "iqv": iqv(frecuencias),
+                "entropia": entropia_shannon(frecuencias),
+                "entropia_maxima": float(np.log2(frecuencias.len())),
+                "entropia_normalizada": entropia_normalizada(frecuencias),
+            }
+        )
+    return pl.DataFrame(filas)
+
+
+def seccion_heterogeneidad(
+    df: pl.DataFrame,
+    columnas: list[str] = VARIABLES_HETEROGENEIDAD,
+    ponderada: bool = True,
+) -> None:
+    """Imprime la tabla de índices de heterogeneidad de las columnas indicadas."""
+    base = "población estimada" if ponderada else "muestra sin ponderar"
+    titulo(f"MEDIDAS DE HETEROGENEIDAD ({base})")
+    print(
+        f"\n    {'Variable':<26}{'k':>3}{'Gini-Simpson':>15}{'IQV':>9}"
+        f"{'Entropía':>11}{'Máxima':>9}{'Normalizada':>14}"
+    )
+    print(f"    {'-' * 87}")
+    for fila in tabla_heterogeneidad(df, columnas, ponderada).iter_rows(named=True):
+        print(
+            f"    {fila['variable']:<26}{fila['k']:>3}{fila['gini_simpson']:>15.4f}"
+            f"{fila['iqv']:>9.4f}{fila['entropia']:>11.4f}"
+            f"{fila['entropia_maxima']:>9.4f}{fila['entropia_normalizada']:>14.4f}"
+        )
 
 
 # --------------------------------------------------------------------------
