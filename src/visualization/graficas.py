@@ -1,5 +1,5 @@
 """
-Graficas del analisis exploratorio de la ENDIREH 2021.
+Gráficas del análisis exploratorio de la ENDIREH 2021.
 
 Construye cinco figuras y las guarda en reports/figuras/:
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import matplotlib
 
-# Agg dibuja en memoria; permite generar las figuras sin entorno grafico.
+# Agg dibuja en memoria; permite generar las figuras sin entorno gráfico.
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.transforms import blended_transform_factory
@@ -28,15 +28,15 @@ import polars as pl
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
 
-# Paleta comun a todas las figuras.
+# Paleta común a todas las figuras.
 SUPERFICIE = "#fcfcfb"
 TINTA = "#0b0b0b"
 TINTA_SUAVE = "#52514e"
-AZUL = "#2a78d6"  # categoria 1 / serie unica
-NARANJA = "#eb6834"  # categoria 2
+AZUL = "#2a78d6"  # categoría 1 / serie única
+NARANJA = "#eb6834"  # categoría 2
 GRIS_RETICULA = "#d8d7d2"
 
-# Valores por omision de matplotlib para todo el modulo.
+# Valores por omisión de matplotlib para todo el módulo.
 plt.rcParams.update(
     {
         "figure.facecolor": SUPERFICIE,
@@ -55,9 +55,9 @@ plt.rcParams.update(
 
 def preparar_ejes(ax, eje_valor: str = "y") -> None:
     """
-    Deja los ejes con reticula tenue y sin marcos superfluos.
+    Deja los ejes con retícula tenue y sin marcos superfluos.
 
-    eje_valor indica cual de los dos ejes lleva la magnitud y recibe reticula.
+    eje_valor indica cuál de los dos ejes lleva la magnitud y recibe retícula.
     """
     for lado in ("top", "right"):
         ax.spines[lado].set_visible(False)
@@ -68,7 +68,7 @@ def preparar_ejes(ax, eje_valor: str = "y") -> None:
 
 
 def titular(ax, titulo: str, subtitulo: str) -> None:
-    """Escribe el titulo y el subtitulo por encima del area de graficado."""
+    """Escribe el título y el subtítulo por encima del área de graficado."""
     ax.set_title(
         titulo, fontsize=13, fontweight="bold", color=TINTA, loc="left", pad=26
     )
@@ -86,7 +86,7 @@ def titular(ax, titulo: str, subtitulo: str) -> None:
 
 
 def marcar_nacional(ax, valor: float) -> None:
-    """Dibuja la linea de referencia con la prevalencia nacional."""
+    """Dibuja la línea de referencia con la prevalencia nacional."""
     ax.axvline(valor, color=NARANJA, linewidth=1.6, linestyle="--")
     y0, y1 = ax.get_ylim()
     ax.set_ylim(y0, y1 + (y1 - y0) * 0.07)
@@ -105,7 +105,7 @@ def marcar_nacional(ax, valor: float) -> None:
 
 
 def pie_de_figura(ax, texto: str) -> None:
-    """Escribe la nota al pie con la fuente de los datos y el tamano de muestra."""
+    """Escribe la nota al pie con la fuente de los datos y el tamaño de muestra."""
     ax.annotate(
         texto,
         xy=(0, 0),
@@ -130,9 +130,9 @@ def guardar(fig, nombre: str) -> None:
 
 def prevalencia_ponderada(df: pl.DataFrame, columna: str) -> pl.DataFrame:
     """
-    Calcula la prevalencia de violencia dentro de cada categoria de la columna.
+    Calcula la prevalencia de violencia dentro de cada categoría de la columna.
 
-    Divide la suma de factores de expansion de las mujeres que reportaron
+    Divide la suma de factores de expansión de las mujeres que reportaron
     violencia entre la suma de factores de todo el grupo.
     """
     return (
@@ -334,10 +334,10 @@ def figura_04_prevalencia_estado_civil(df: pl.DataFrame) -> None:
 
 def figura_05_escolaridad(df: pl.DataFrame) -> None:
     """
-    Distribucion de nivel_escolaridad en la muestra y en la poblacion.
+    Distribución de nivel_escolaridad en la muestra y en la población.
 
-    Enfrenta el porcentaje de cada categoria antes y despues de aplicar el
-    factor de expansion.
+    Enfrenta el porcentaje de cada categoría antes y después de aplicar el
+    factor de expansión.
     """
     resumen = (
         df.group_by("nivel_escolaridad")
@@ -349,7 +349,7 @@ def figura_05_escolaridad(df: pl.DataFrame) -> None:
             (100 * pl.col("n") / df.height).alias("pct_muestra"),
             (100 * pl.col("poblacion") / df["factor_expansion"].sum()).alias("pct_pob"),
         )
-        # Orden natural de las categorias, no por frecuencia.
+        # Orden natural de las categorías, no por frecuencia.
         .sort("nivel_escolaridad")
     )
     categorias = [str(x) for x in resumen["nivel_escolaridad"].to_list()]

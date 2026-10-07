@@ -4,9 +4,9 @@ Preprocesamiento de la ENDIREH 2021.
 Lee el archivo consolidado de data/data-raw/, lo deja consistente y escribe el
 resultado en data/data-processed/ como Parquet y CSV.
 
-Pasos: carga, validacion de columnas, reparacion de encoding, conversion de
-codigos de no respuesta a nulo, conversion de tipos, eliminacion de duplicados
-e imputacion.
+Pasos: carga, validación de columnas, reparación de encoding, conversión de
+códigos de no respuesta a nulo, conversión de tipos, eliminación de duplicados
+e imputación.
 
 Uso:
     python3 src/cleaning/limpieza.py
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import polars as pl
 
-# .parent.parent.parent sube de src/cleaning/ a la raiz del proyecto.
+# .parent.parent.parent sube de src/cleaning/ a la raíz del proyecto.
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import (
     RUTA_DATA_PROCESSED,
@@ -27,7 +27,7 @@ from config.rutas import (
 )
 
 # --------------------------------------------------------------------------
-# Configuracion
+# Configuración
 # --------------------------------------------------------------------------
 
 # Columnas que debe traer el archivo consolidado.
@@ -58,7 +58,7 @@ COLUMNAS_ESPERADAS = [
     "anio_encuesta",
 ]
 
-# Columnas de texto cuyos acentos vienen danados desde el origen.
+# Columnas de texto cuyos acentos vienen dañados desde el origen.
 COLUMNAS_TEXTO = [
     "nom_entidad",
     "nom_municipio",
@@ -107,8 +107,8 @@ def reparar_mojibake(texto: str) -> str:
 
     El archivo viene en UTF-8 pero su contenido ya estaba mal interpretado
     desde el origen: dentro dice 'MÃ‰XICO' en lugar de 'MÉXICO'. Volver a
-    codificar en latin1 y releer en utf8 deshace esa interpretacion. Si el
-    texto ya esta bien, la conversion falla y se devuelve intacto.
+    codificar en latin1 y releer en utf8 deshace esa interpretación. Si el
+    texto ya está bien, la conversión falla y se devuelve intacto.
     """
     try:
         return texto.encode("latin1").decode("utf8")
@@ -118,9 +118,9 @@ def reparar_mojibake(texto: str) -> str:
 
 def reparar_columna(df: pl.DataFrame, columna: str) -> tuple[pl.DataFrame, int]:
     """
-    Repara una columna de texto y devuelve cuantos valores distintos cambiaron.
+    Repara una columna de texto y devuelve cuántos valores distintos cambiaron.
 
-    La correccion se calcula sobre los valores unicos y se sustituye en bloque.
+    La corrección se calcula sobre los valores únicos y se sustituye en bloque.
     """
     unicos = df[columna].unique().drop_nulls().to_list()
     mapa = {v: reparar_mojibake(v) for v in unicos}
@@ -132,7 +132,7 @@ def reparar_columna(df: pl.DataFrame, columna: str) -> tuple[pl.DataFrame, int]:
 
 
 def resumen_nulos(df: pl.DataFrame, columnas: list[str]) -> str:
-    """Arma una linea con el conteo y el porcentaje de nulos de cada columna."""
+    """Arma una línea con el conteo y el porcentaje de nulos de cada columna."""
     partes = []
     for c in columnas:
         n = df[c].null_count()
@@ -174,7 +174,7 @@ def validar(df: pl.DataFrame) -> None:
     if extra:
         log(f"AVISO: el crudo trae columnas no contempladas: {extra}")
 
-    log(f"Validacion: las {len(COLUMNAS_ESPERADAS)} columnas esperadas estan presentes")
+    log(f"Validación: las {len(COLUMNAS_ESPERADAS)} columnas esperadas están presentes")
 
 
 def reparar_texto(df: pl.DataFrame) -> pl.DataFrame:
@@ -191,9 +191,9 @@ def reparar_texto(df: pl.DataFrame) -> pl.DataFrame:
 
 def codigos_a_nulo(df: pl.DataFrame) -> pl.DataFrame:
     """
-    Convierte a nulo los codigos de no respuesta.
+    Convierte a nulo los códigos de no respuesta.
 
-    Son valores centinela que caen dentro del rango numerico de la variable:
+    Son valores centinela que caen dentro del rango numérico de la variable:
     98 y 99 en edad_primer_union, 999997 a 999999 en ingreso_pareja.
     """
     for columna, codigos in CODIGOS_NO_RESPUESTA.items():
@@ -243,7 +243,7 @@ def convertir_tipos(df: pl.DataFrame) -> pl.DataFrame:
 
 def quitar_duplicados(df: pl.DataFrame) -> pl.DataFrame:
     """
-    Elimina las filas identicas en todas sus columnas.
+    Elimina las filas idénticas en todas sus columnas.
 
     El criterio es la identidad de fila completa; el dataset no trae
     identificador de registro. maintain_order=True fija el orden de salida.
@@ -251,7 +251,7 @@ def quitar_duplicados(df: pl.DataFrame) -> pl.DataFrame:
     antes = df.height
     df = df.unique(maintain_order=True)
     log(
-        f"Duplicados: {antes - df.height:,} filas identicas eliminadas ({df.height:,} restantes)"
+        f"Duplicados: {antes - df.height:,} filas idénticas eliminadas ({df.height:,} restantes)"
     )
     return df
 
@@ -262,7 +262,7 @@ def imputar(df: pl.DataFrame) -> pl.DataFrame:
 
     Alcanza solo a los registros cuya pareja trabaja; cuando no trabaja el nulo
     es estructural y se conserva. El valor imputado es la mediana del ingreso
-    dentro del estrato socioeconomico del registro.
+    dentro del estrato socioeconómico del registro.
 
     Agrega la columna ingreso_pareja_imputado, que marca los registros
     afectados.
@@ -282,11 +282,11 @@ def imputar(df: pl.DataFrame) -> pl.DataFrame:
         .alias("ingreso_pareja"),
         es_no_respuesta.alias("ingreso_pareja_imputado"),
     )
-    log(f"Imputacion: {n_imputar:,} valores de ingreso_pareja (mediana por estrato)")
+    log(f"Imputación: {n_imputar:,} valores de ingreso_pareja (mediana por estrato)")
 
     estructurales = df.select((pl.col("ingreso_pareja").is_null()).sum()).item()
     log(
-        f"Imputacion: {estructurales:,} nulos estructurales de ingreso_pareja NO se imputan (pareja no trabaja)"
+        f"Imputación: {estructurales:,} nulos estructurales de ingreso_pareja NO se imputan (pareja no trabaja)"
     )
     return df
 
@@ -296,7 +296,7 @@ def guardar(df: pl.DataFrame) -> None:
     Escribe el resultado en data/data-processed/, en Parquet y en CSV.
 
     El Parquet conserva los tipos de dato y es el que leen el EDA y las
-    graficas.
+    gráficas.
     """
     RUTA_DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
     df.write_parquet(RUTA_ENDIREH_LIMPIO)
@@ -311,20 +311,20 @@ def procesar_endireh() -> pl.DataFrame:
     """
     Ejecuta el pipeline completo y devuelve el DataFrame resultante.
 
-    El orden de los pasos condiciona el resultado: la deduplicacion opera sobre
-    los tipos ya fijados y los codigos ya convertidos a nulo, y la imputacion
+    El orden de los pasos condiciona el resultado: la deduplicación opera sobre
+    los tipos ya fijados y los códigos ya convertidos a nulo, y la imputación
     se calcula sobre las filas que sobreviven.
 
-    El archivo de entrada se localiza por su extension dentro de data-raw/.
+    El archivo de entrada se localiza por su extensión dentro de data-raw/.
     """
     archivos = sorted(RUTA_DATA_RAW.glob("*.csv"))
     if not archivos:
         raise FileNotFoundError(
-            f"No hay ningun .csv en {RUTA_DATA_RAW}. "
-            "Coloca ahi el archivo consolidado que entrego la ayudantia."
+            f"No hay ningún .csv en {RUTA_DATA_RAW}. "
+            "Coloca ahí el archivo consolidado que entregó la ayudantía."
         )
     if len(archivos) > 1:
-        log(f"AVISO: hay {len(archivos)} archivos .csv; se usara {archivos[0].name}")
+        log(f"AVISO: hay {len(archivos)} archivos .csv; se usará {archivos[0].name}")
 
     print("=" * 70)
     df = cargar(archivos[0])
@@ -341,7 +341,7 @@ def procesar_endireh() -> pl.DataFrame:
     df = imputar(df)
 
     print("-" * 70)
-    log(f"Nulos DESPUES: {resumen_nulos(df, cuantitativas)}")
+    log(f"Nulos DESPUÉS: {resumen_nulos(df, cuantitativas)}")
     guardar(df)
     print("=" * 70)
     return df

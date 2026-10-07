@@ -1,10 +1,10 @@
 """
-Analisis exploratorio de la ENDIREH 2021.
+Análisis exploratorio de la ENDIREH 2021.
 
 Calcula e imprime las medidas descriptivas de los Pasos 5, 6 y 7 sobre el
 dataset ya preprocesado: moda y frecuencias de las cualitativas, medidas de
-localizacion en version simple y ponderada, y medidas de variabilidad
-comparando el grupo que reporto violencia de pareja contra el que no.
+localización en versión simple y ponderada, y medidas de variabilidad
+comparando el grupo que reportó violencia de pareja contra el que no.
 
 Cada variable se filtra por separado. Los valores se toman completos, y las
 incompatibilidades entre una variable y su nombre se reportan como avisos junto
@@ -26,7 +26,7 @@ import polars as pl
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import RUTA_ENDIREH_LIMPIO
 
-# Variables cuantitativas del dataset; ingreso_pareja es la unica continua.
+# Variables cuantitativas del dataset; ingreso_pareja es la única continua.
 VARIABLES_CUANTITATIVAS = ["edad_primer_union", "num_hijos", "ingreso_pareja"]
 
 VARIABLES_CUALITATIVAS = [
@@ -40,7 +40,7 @@ ANCHO = 78
 
 
 # --------------------------------------------------------------------------
-# Funciones estadisticas
+# Funciones estadísticas
 # --------------------------------------------------------------------------
 
 
@@ -49,7 +49,7 @@ def cuantil_ponderado(valores: np.ndarray, pesos: np.ndarray, q: float) -> float
     Devuelve el cuantil q de los valores, ponderado por los pesos.
 
     Ordena los valores, acumula los pesos y devuelve el primero cuyo peso
-    acumulado alcanza la fraccion q del total: la definicion de CDF inversa.
+    acumulado alcanza la fracción q del total: la definición de CDF inversa.
     numpy y polars no ofrecen cuantiles con pesos.
     """
     orden = np.argsort(valores)
@@ -65,7 +65,7 @@ def moda_ponderada(valores: np.ndarray, pesos: np.ndarray):
     """
     Devuelve el valor con mayor peso acumulado.
 
-    Suma los factores de expansion de cada valor distinto y devuelve el de
+    Suma los factores de expansión de cada valor distinto y devuelve el de
     mayor total.
     """
     unicos = np.unique(valores)
@@ -75,11 +75,11 @@ def moda_ponderada(valores: np.ndarray, pesos: np.ndarray):
 
 def medidas_localizacion(valores: pl.Series, pesos: pl.Series) -> dict:
     """
-    Calcula las medidas de localizacion de una variable.
+    Calcula las medidas de localización de una variable.
 
     Cada medida se devuelve en dos versiones: la simple, sobre la muestra
-    encuestada, y la ponderada, sobre la poblacion estimada. n_modas indica
-    cuantos valores empatan en frecuencia.
+    encuestada, y la ponderada, sobre la población estimada. n_modas indica
+    cuántos valores empatan en frecuencia.
     """
     modas = valores.mode()
     v = valores.to_numpy()
@@ -109,7 +109,7 @@ def medidas_localizacion(valores: pl.Series, pesos: pl.Series) -> dict:
 
 def medidas_variabilidad(valores: pl.Series) -> dict:
     """
-    Calcula las medidas de dispersion de una variable.
+    Calcula las medidas de dispersión de una variable.
 
     ddof=1 produce la varianza muestral, que divide entre n-1.
     """
@@ -125,19 +125,19 @@ def medidas_variabilidad(valores: pl.Series) -> dict:
         "maximo": valores.max(),
         "varianza": valores.var(ddof=1),
         "desv_est": desv,
-        # El CV no esta definido con media cero.
+        # El CV no está definido con media cero.
         "CV": (desv / media * 100) if media != 0 else float("nan"),
         "IQR": q3 - q1,
     }
 
 
 # --------------------------------------------------------------------------
-# Presentacion
+# Presentación
 # --------------------------------------------------------------------------
 
 
 def titulo(texto: str, caracter: str = "=") -> None:
-    """Imprime un encabezado de seccion."""
+    """Imprime un encabezado de sección."""
     print("\n" + caracter * ANCHO)
     print(f" {texto}")
     print(caracter * ANCHO)
@@ -147,7 +147,7 @@ def serie_valida(df: pl.DataFrame, columna: str) -> pl.DataFrame:
     """
     Devuelve las filas en que la columna indicada tiene valor.
 
-    Filtra unicamente por esa columna; los nulos de las demas no intervienen.
+    Filtra únicamente por esa columna; los nulos de las demás no intervienen.
     """
     return df.filter(pl.col(columna).is_not_null())
 
@@ -177,7 +177,7 @@ def alertas_de_coherencia(columna: str, valores: pl.Series) -> list[str]:
 
 
 def imprimir_localizacion(columna: str, m: dict, avisos: list[str]) -> None:
-    """Imprime la tabla de medidas de localizacion de una variable."""
+    """Imprime la tabla de medidas de localización de una variable."""
     print(f"\n--- {columna}")
     print(
         f"    n = {m['n']:,} observaciones | población estimada = {m['poblacion']:,.0f} mujeres"
@@ -208,7 +208,7 @@ def imprimir_localizacion(columna: str, m: dict, avisos: list[str]) -> None:
 
 
 def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> None:
-    """Imprime la tabla comparativa de dispersion entre los dos grupos."""
+    """Imprime la tabla comparativa de dispersión entre los dos grupos."""
     print(f"\n--- {columna}")
     etiquetas = ["Medida", "Total", "Con violencia", "Sin violencia"]
     print(
@@ -239,12 +239,12 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
 
 
 # --------------------------------------------------------------------------
-# Secciones del analisis
+# Secciones del análisis
 # --------------------------------------------------------------------------
 
 
 def seccion_localizacion(df: pl.DataFrame) -> None:
-    """Imprime las medidas de localizacion de las variables cuantitativas."""
+    """Imprime las medidas de localización de las variables cuantitativas."""
     titulo("PASO 6: MEDIDAS DE LOCALIZACIÓN")
     print("\nLa media ponderada usa factor_expansion. La mediana, los cuartiles y")
     print("los percentiles ponderados se calculan con una función propia, porque")
@@ -257,7 +257,7 @@ def seccion_localizacion(df: pl.DataFrame) -> None:
 
 
 def seccion_variabilidad(df: pl.DataFrame) -> None:
-    """Imprime la comparacion de dispersion entre los grupos con y sin violencia."""
+    """Imprime la comparación de dispersión entre los grupos con y sin violencia."""
     titulo("PASO 7: MEDIDAS DE VARIABILIDAD")
     print("\nComparación entre el grupo que reportó violencia de pareja y el que no.")
     print("Las medidas van sin ponderar: el CV compara dispersión relativa dentro")
@@ -348,7 +348,7 @@ def seccion_prevalencia(df: pl.DataFrame) -> None:
 
 
 def ejecutar_eda() -> None:
-    """Carga el dataset procesado e imprime el analisis completo."""
+    """Carga el dataset procesado e imprime el análisis completo."""
     if not RUTA_ENDIREH_LIMPIO.exists():
         raise FileNotFoundError(
             f"No existe {RUTA_ENDIREH_LIMPIO}. "
