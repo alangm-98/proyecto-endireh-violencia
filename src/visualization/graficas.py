@@ -1,7 +1,7 @@
 """
 Gráficas del análisis exploratorio de la ENDIREH 2021.
 
-Construye ocho figuras y las guarda en reports/figuras/:
+Construye nueve figuras y las guarda en reports/figuras/:
 
     01_distribucion_edad_primer_union.png
     02_ingreso_por_violencia.png
@@ -11,6 +11,7 @@ Construye ocho figuras y las guarda en reports/figuras/:
     06_distribucion_ingreso_pareja.png
     07_boxplot_ingreso_por_violencia.png
     08_heterogeneidad_iqv.png
+    09_curva_lorenz_entidades.png
 
 Uso:
     python3 src/visualization/graficas.py
@@ -32,7 +33,12 @@ import polars as pl
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
 from src.visualization.eda import medidas_localizacion
-from src.visualization.indices import tabla_heterogeneidad
+from src.visualization.indices import (
+    curva_lorenz,
+    gini,
+    tabla_entidades,
+    tabla_heterogeneidad,
+)
 
 # Paleta común a todas las figuras.
 SUPERFICIE = "#fcfcfb"
@@ -616,6 +622,71 @@ def figura_08_heterogeneidad(df: pl.DataFrame) -> None:
     guardar(fig, "08_heterogeneidad_iqv.png")
 
 
+def figura_09_curva_lorenz(df: pl.DataFrame) -> None:
+    """
+    Curva de Lorenz de los casos ponderados por entidad.
+
+    Dibuja como referencia la curva de la población y la recta de reparto
+    igual. Cada curva ordena las entidades según su propia variable.
+    """
+    tabla = tabla_entidades(df)
+    curvas = [
+        (
+            "Casos de violencia de pareja reportada",
+            tabla["casos_ponderados"],
+            AZUL,
+            "-",
+        ),
+        ("Población de 15 años y más", tabla["poblacion_ponderada"], NARANJA, "--"),
+    ]
+
+    fig, ax = plt.subplots(figsize=(7.8, 6.8))
+    ax.plot(
+        [0, 1],
+        [0, 1],
+        color=TINTA_SUAVE,
+        linewidth=1,
+        linestyle=":",
+        label="Reparto igual entre entidades",
+    )
+    for nombre, valores, color, estilo in curvas:
+        unidades, total = curva_lorenz(valores)
+        ax.plot(
+            unidades,
+            total,
+            color=color,
+            linewidth=2,
+            linestyle=estilo,
+            label=f"{nombre} (Gini {gini(valores):.3f})",
+        )
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{100 * v:.0f}%"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{100 * v:.0f}%"))
+    preparar_ejes(ax)
+    ax.grid(axis="x", color=GRIS_RETICULA, linewidth=0.6, alpha=0.9)
+    ax.legend(frameon=False, loc="upper left", fontsize=9.5)
+    titular(
+        ax,
+        "Concentración de los casos de violencia por entidad",
+        "Curva de Lorenz de los casos ponderados y, como referencia, de la población",
+    )
+    ax.set_xlabel("Entidades acumuladas, de menor a mayor")
+    ax.set_ylabel("Parte acumulada del total")
+    pie_de_figura(
+        ax,
+        f"ENDIREH 2021 (INEGI). {tabla.height} entidades; casos y población "
+        "ponderados por factor_expansion.\n"
+        "Cada curva ordena las entidades de menor a mayor según su propia variable. "
+        f"El Gini máximo\ncon {tabla.height} entidades es "
+        f"{(tabla.height - 1) / tabla.height:.3f}. Los casos corresponden a la "
+        "violencia reportada en la encuesta,\nno a su ocurrencia.",
+    )
+    guardar(fig, "09_curva_lorenz_entidades.png")
+
+
 # --------------------------------------------------------------------------
 
 
@@ -636,7 +707,8 @@ def generar_graficas() -> None:
     figura_06_distribucion_ingreso(df)
     figura_07_boxplot_ingreso(df)
     figura_08_heterogeneidad(df)
-    print("[graficas] Listo: 8 figuras generadas.")
+    figura_09_curva_lorenz(df)
+    print("[graficas] Listo: 9 figuras generadas.")
 
 
 if __name__ == "__main__":

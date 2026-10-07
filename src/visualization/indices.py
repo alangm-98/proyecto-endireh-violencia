@@ -224,6 +224,96 @@ def gini(valores) -> float:
     return float((2 * np.sum(posiciones * v) - (n + 1) * v.sum()) / (n * v.sum()))
 
 
+def tabla_entidades(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Devuelve una fila por entidad con sus casos, su población y su prevalencia.
+
+    casos_ponderados suma el factor_expansion de las mujeres que reportaron
+    violencia de pareja y poblacion_ponderada el de todas. La prevalencia es su
+    cociente, en porcentaje.
+    """
+    return (
+        df.group_by("nom_entidad")
+        .agg(
+            pl.col("factor_expansion")
+            .filter(pl.col("sufrio_violencia_pareja") == 1)
+            .sum()
+            .alias("casos_ponderados"),
+            pl.col("factor_expansion").sum().alias("poblacion_ponderada"),
+        )
+        .with_columns(
+            (100 * pl.col("casos_ponderados") / pl.col("poblacion_ponderada")).alias(
+                "prevalencia"
+            )
+        )
+        .sort("nom_entidad")
+    )
+
+
+def seccion_entidades(df: pl.DataFrame) -> None:
+    """Imprime los casos, la población y la prevalencia de cada entidad."""
+    tabla = tabla_entidades(df).sort("casos_ponderados", descending=True)
+    casos = tabla["casos_ponderados"].sum()
+    poblacion = tabla["poblacion_ponderada"].sum()
+
+    titulo("CASOS DE VIOLENCIA DE PAREJA REPORTADA POR ENTIDAD (ponderados)")
+    print(
+        f"\n    {'Entidad':<33}{'Casos':>11}{'% casos':>10}"
+        f"{'Población':>13}{'% pobl.':>10}{'Prevalencia':>14}"
+    )
+    print(f"    {'-' * 91}")
+    for fila in tabla.iter_rows(named=True):
+        print(
+            f"    {fila['nom_entidad']:<33}{fila['casos_ponderados']:>11,.0f}"
+            f"{100 * fila['casos_ponderados'] / casos:>9.1f}%"
+            f"{fila['poblacion_ponderada']:>13,.0f}"
+            f"{100 * fila['poblacion_ponderada'] / poblacion:>9.1f}%"
+            f"{fila['prevalencia']:>13.1f}%"
+        )
+    print(f"    {'-' * 91}")
+    print(
+        f"    {'Total':<33}{casos:>11,.0f}{100:>9.1f}%{poblacion:>13,.0f}{100:>9.1f}%"
+        f"{100 * casos / poblacion:>13.1f}%"
+    )
+
+
+def seccion_concentracion(df: pl.DataFrame) -> None:
+    """
+    Imprime el Gini de casos, población y prevalencia entre las entidades.
+
+    Agrega dos lecturas de la curva de Lorenz: la parte del total que reúne la
+    mitad de las entidades con valores más bajos y la que reúnen las cinco con
+    valores más altos.
+    """
+    tabla = tabla_entidades(df)
+    n = tabla.height
+    series = [
+        ("Casos ponderados", tabla["casos_ponderados"]),
+        ("Población", tabla["poblacion_ponderada"]),
+        ("Prevalencia", tabla["prevalencia"]),
+    ]
+
+    titulo("MEDIDAS DE CONCENTRACIÓN ENTRE ENTIDADES")
+    print(f"\nEntidades: {n}. Gini máximo posible, (n-1)/n: {(n - 1) / n:.4f}")
+    print(f"\n    {'Variable':<22}{'Gini':>10}")
+    print(f"    {'-' * 32}")
+    for nombre, valores in series:
+        print(f"    {nombre:<22}{gini(valores):>10.4f}")
+
+    casos, poblacion = (curva_lorenz(valores)[1] for _, valores in series[:2])
+    print(f"\n    {'Parte del total que reúnen':<34}{'Casos':>10}{'Población':>12}")
+    print(f"    {'-' * 56}")
+    print(
+        f"    {f'Las {n // 2} entidades con menos':<34}{100 * casos[n // 2]:>9.1f}%"
+        f"{100 * poblacion[n // 2]:>11.1f}%"
+    )
+    print(
+        f"    {'Las 5 entidades con más':<34}{100 * (1 - casos[n - 5]):>9.1f}%"
+        f"{100 * (1 - poblacion[n - 5]):>11.1f}%"
+    )
+    print("    Cada columna ordena las entidades según su propio valor.")
+
+
 # --------------------------------------------------------------------------
 # Comprobación
 # --------------------------------------------------------------------------
