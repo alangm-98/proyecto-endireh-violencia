@@ -164,14 +164,14 @@ def alertas_de_coherencia(columna: str, valores: pl.Series) -> list[str]:
         if imposibles:
             avisos.append(
                 f"{imposibles:,} valores ({100 * imposibles / valores.len():.1f}%) "
-                f"son menores a 10. Una edad a la primera union no puede serlo."
+                f"son menores a 10. Una edad a la primera unión no puede serlo."
             )
     if columna == "num_hijos":
         distintos = valores.unique().sort()
         if distintos.len() <= 6:
             avisos.append(
                 f"solo toma {distintos.len()} valores distintos {distintos.to_list()}. "
-                f"Se comporta como un codigo, no como un conteo."
+                f"Se comporta como un código, no como un conteo."
             )
     return avisos
 
@@ -180,7 +180,7 @@ def imprimir_localizacion(columna: str, m: dict, avisos: list[str]) -> None:
     """Imprime la tabla de medidas de localizacion de una variable."""
     print(f"\n--- {columna}")
     print(
-        f"    n = {m['n']:,} observaciones | poblacion estimada = {m['poblacion']:,.0f} mujeres"
+        f"    n = {m['n']:,} observaciones | población estimada = {m['poblacion']:,.0f} mujeres"
     )
     if avisos:
         for a in avisos:
@@ -201,7 +201,7 @@ def imprimir_localizacion(columna: str, m: dict, avisos: list[str]) -> None:
         print(f"    {nombre:<12} {simple:>14,.2f} {pond:>14,.2f}")
     if m["n_modas"] > 1:
         print(
-            f"    (la distribucion es multimodal: {m['n_modas']} valores empatan en frecuencia)"
+            f"    (la distribución es multimodal: {m['n_modas']} valores empatan en frecuencia)"
         )
     dif = m["media_pond"] - m["media"]
     print(f"\n    Diferencia media ponderada - media simple: {dif:+.2f}")
@@ -220,7 +220,7 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
         ("media", "Media"),
         ("rango", "Rango"),
         ("varianza", "Varianza"),
-        ("desv_est", "Desv. estandar"),
+        ("desv_est", "Desv. estándar"),
         ("CV", "CV (%)"),
         ("IQR", "IQR"),
     ]:
@@ -235,7 +235,7 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
 
     if not (math.isnan(con["CV"]) or math.isnan(sin["CV"])):
         razon = con["CV"] / sin["CV"] if sin["CV"] else float("nan")
-        print(f"\n    Razon de CV (con/sin): {razon:.2f}")
+        print(f"\n    Razón de CV (con/sin): {razon:.2f}")
 
 
 # --------------------------------------------------------------------------
@@ -245,9 +245,9 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
 
 def seccion_localizacion(df: pl.DataFrame) -> None:
     """Imprime las medidas de localizacion de las variables cuantitativas."""
-    titulo("PASO 6: MEDIDAS DE LOCALIZACION")
+    titulo("PASO 6: MEDIDAS DE LOCALIZACIÓN")
     print("\nLa media ponderada usa factor_expansion. La mediana, los cuartiles y")
-    print("los percentiles ponderados se calculan con una funcion propia, porque")
+    print("los percentiles ponderados se calculan con una función propia, porque")
     print("ni polars ni numpy ofrecen cuantiles con pesos.")
 
     for columna in VARIABLES_CUANTITATIVAS:
@@ -259,9 +259,9 @@ def seccion_localizacion(df: pl.DataFrame) -> None:
 def seccion_variabilidad(df: pl.DataFrame) -> None:
     """Imprime la comparacion de dispersion entre los grupos con y sin violencia."""
     titulo("PASO 7: MEDIDAS DE VARIABILIDAD")
-    print("\nComparacion entre el grupo que reporto violencia de pareja y el que no.")
-    print("Las medidas van sin ponderar: el CV compara dispersion relativa dentro")
-    print("de cada grupo, no estima un total poblacional. Es una limitacion a")
+    print("\nComparación entre el grupo que reportó violencia de pareja y el que no.")
+    print("Las medidas van sin ponderar: el CV compara dispersión relativa dentro")
+    print("de cada grupo, no estima un total poblacional. Es una limitación a")
     print("declarar en el reporte.")
 
     for columna in VARIABLES_CUANTITATIVAS:
@@ -279,8 +279,8 @@ def seccion_variabilidad(df: pl.DataFrame) -> None:
 def seccion_cualitativas(df: pl.DataFrame) -> None:
     """Imprime moda y tabla de frecuencias de las variables cualitativas."""
     titulo("PASO 5: VARIABLES CUALITATIVAS (moda y frecuencias)")
-    print("\nEn una variable cualitativa la unica medida de tendencia central")
-    print("valida es la moda. En una ordinal ademas tiene sentido la mediana,")
+    print("\nEn una variable cualitativa la única medida de tendencia central")
+    print("válida es la moda. En una ordinal además tiene sentido la mediana,")
     print("pero nunca la media.")
 
     for columna in VARIABLES_CUALITATIVAS:
@@ -300,7 +300,7 @@ def seccion_cualitativas(df: pl.DataFrame) -> None:
         )
         moda = resumen[columna][0]
         print(f"\n--- {columna}   (moda ponderada: {moda})")
-        print(f"    {'Categoria':<34}{'Frec.':>10}{'% muestra':>12}{'% poblacion':>14}")
+        print(f"    {'Categoría':<34}{'Frec.':>10}{'% muestra':>12}{'% población':>14}")
         print(f"    {'-' * 70}")
         for fila in resumen.head(10).iter_rows(named=True):
             print(
@@ -308,7 +308,7 @@ def seccion_cualitativas(df: pl.DataFrame) -> None:
                 f"{fila['pct_muestra']:>11.1f}%{fila['pct_poblacion']:>13.1f}%"
             )
         if resumen.height > 10:
-            print(f"    ... y {resumen.height - 10} categorias mas")
+            print(f"    ... y {resumen.height - 10} categorías más")
 
 
 def seccion_prevalencia(df: pl.DataFrame) -> None:
@@ -320,8 +320,8 @@ def seccion_prevalencia(df: pl.DataFrame) -> None:
         / df["factor_expansion"].sum()
     )
     print(f"\nPrevalencia nacional ponderada: {total:.1f}%")
-    print("Interpretacion: es la proporcion de mujeres que REPORTARON violencia")
-    print("de pareja en la encuesta, no una medicion directa de su ocurrencia.")
+    print("Interpretación: es la proporción de mujeres que REPORTARON violencia")
+    print("de pareja en la encuesta, no una medición directa de su ocurrencia.")
 
     for columna in ["nom_entidad", "estado_civil_desc"]:
         resumen = (
@@ -341,7 +341,7 @@ def seccion_prevalencia(df: pl.DataFrame) -> None:
         for fila in resumen.head(10).iter_rows(named=True):
             print(f"    {str(fila[columna]):<38}{fila['prevalencia']:>8.1f}%")
         if resumen.height > 10:
-            print(f"    ... ({resumen.height - 10} categorias mas)")
+            print(f"    ... ({resumen.height - 10} categorías más)")
 
 
 # --------------------------------------------------------------------------
@@ -356,10 +356,10 @@ def ejecutar_eda() -> None:
         )
 
     df = pl.read_parquet(ruta)
-    titulo("ANALISIS EXPLORATORIO DE DATOS - ENDIREH 2021")
+    titulo("ANÁLISIS EXPLORATORIO DE DATOS - ENDIREH 2021")
     print(f"\nRegistros: {df.height:,}   Variables: {df.width}")
     print(
-        f"Poblacion representada: {df['factor_expansion'].sum():,.0f} mujeres de 15 anios y mas"
+        f"Población representada: {df['factor_expansion'].sum():,.0f} mujeres de 15 años y más"
     )
 
     seccion_cualitativas(df)
