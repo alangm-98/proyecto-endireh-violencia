@@ -26,9 +26,7 @@ import numpy as np
 import polars as pl
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from config.rutas import BASE_DIR, RUTA_DATA_PROCESSED
-
-RUTA_FIGURAS = BASE_DIR / "reports" / "figuras"
+from config.rutas import BASE_DIR, RUTA_DATA_PROCESSED, RUTA_FIGURAS
 
 # Paleta comun a todas las figuras.
 SUPERFICIE = "#fcfcfb"
@@ -216,17 +214,13 @@ def figura_02_ingreso_por_violencia(df: pl.DataFrame) -> None:
     sub = df.filter(
         pl.col("ingreso_pareja").is_not_null() & (pl.col("ingreso_pareja") > 0)
     )
-    con = sub.filter(pl.col("sufrio_violencia_pareja") == 1)[
-        "ingreso_pareja"
-    ].to_numpy()
-    sin = sub.filter(pl.col("sufrio_violencia_pareja") == 0)[
-        "ingreso_pareja"
-    ].to_numpy()
+    con = sub.filter(pl.col("sufrio_violencia_pareja") == 1)["ingreso_pareja"]
+    sin = sub.filter(pl.col("sufrio_violencia_pareja") == 0)["ingreso_pareja"]
 
     etiquetas = ["P10", "Q1 (P25)", "Mediana", "Q3 (P75)", "P90"]
-    cortes = [10, 25, 50, 75, 90]
-    v_con = np.percentile(con, cortes)
-    v_sin = np.percentile(sin, cortes)
+    cortes = [0.10, 0.25, 0.50, 0.75, 0.90]
+    v_con = [con.quantile(q, interpolation="linear") for q in cortes]
+    v_sin = [sin.quantile(q, interpolation="linear") for q in cortes]
 
     y = np.arange(len(etiquetas))
     alto = 0.38
@@ -255,7 +249,7 @@ def figura_02_ingreso_por_violencia(df: pl.DataFrame) -> None:
 
     ax.set_yticks(y, etiquetas)
     ax.invert_yaxis()
-    ax.set_xlim(0, max(v_sin.max(), v_con.max()) * 1.18)
+    ax.set_xlim(0, max(v_sin + v_con) * 1.18)
     preparar_ejes(ax, eje_valor="x")
     ax.legend(frameon=False, loc="upper right", fontsize=9.5)
     titular(

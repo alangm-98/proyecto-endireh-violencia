@@ -16,6 +16,7 @@ Uso:
     python3 src/visualization/eda.py
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -72,7 +73,7 @@ def moda_ponderada(valores: np.ndarray, pesos: np.ndarray):
     return float(unicos[int(np.argmax(pesos_por_valor))])
 
 
-def medidas_localizacion(valores: np.ndarray, pesos: np.ndarray) -> dict:
+def medidas_localizacion(valores: pl.Series, pesos: pl.Series) -> dict:
     """
     Calcula las medidas de localizacion de una variable.
 
@@ -80,49 +81,49 @@ def medidas_localizacion(valores: np.ndarray, pesos: np.ndarray) -> dict:
     encuestada, y la ponderada, sobre la poblacion estimada. n_modas indica
     cuantos valores empatan en frecuencia.
     """
-    unicos, cuentas = np.unique(valores, return_counts=True)
-    moda_simple = float(unicos[int(np.argmax(cuentas))])
-    n_modas = int((cuentas == cuentas.max()).sum())
+    modas = valores.mode()
+    v = valores.to_numpy()
+    w = pesos.to_numpy()
 
     return {
-        "n": len(valores),
-        "media": float(np.mean(valores)),
-        "mediana": float(np.median(valores)),
-        "moda": moda_simple,
-        "n_modas": n_modas,
-        "Q1": float(np.percentile(valores, 25)),
-        "Q2": float(np.percentile(valores, 50)),
-        "Q3": float(np.percentile(valores, 75)),
-        "P10": float(np.percentile(valores, 10)),
-        "P90": float(np.percentile(valores, 90)),
-        "media_pond": float(np.average(valores, weights=pesos)),
-        "mediana_pond": cuantil_ponderado(valores, pesos, 0.50),
-        "moda_pond": moda_ponderada(valores, pesos),
-        "Q1_pond": cuantil_ponderado(valores, pesos, 0.25),
-        "Q3_pond": cuantil_ponderado(valores, pesos, 0.75),
-        "P10_pond": cuantil_ponderado(valores, pesos, 0.10),
-        "P90_pond": cuantil_ponderado(valores, pesos, 0.90),
-        "poblacion": float(pesos.sum()),
+        "n": valores.len(),
+        "media": valores.mean(),
+        "mediana": valores.median(),
+        "moda": modas.min(),
+        "n_modas": modas.len(),
+        "Q1": valores.quantile(0.25, interpolation="linear"),
+        "Q2": valores.quantile(0.50, interpolation="linear"),
+        "Q3": valores.quantile(0.75, interpolation="linear"),
+        "P10": valores.quantile(0.10, interpolation="linear"),
+        "P90": valores.quantile(0.90, interpolation="linear"),
+        "media_pond": float(np.average(v, weights=w)),
+        "mediana_pond": cuantil_ponderado(v, w, 0.50),
+        "moda_pond": moda_ponderada(v, w),
+        "Q1_pond": cuantil_ponderado(v, w, 0.25),
+        "Q3_pond": cuantil_ponderado(v, w, 0.75),
+        "P10_pond": cuantil_ponderado(v, w, 0.10),
+        "P90_pond": cuantil_ponderado(v, w, 0.90),
+        "poblacion": pesos.sum(),
     }
 
 
-def medidas_variabilidad(valores: np.ndarray) -> dict:
+def medidas_variabilidad(valores: pl.Series) -> dict:
     """
     Calcula las medidas de dispersion de una variable.
 
     ddof=1 produce la varianza muestral, que divide entre n-1.
     """
-    media = float(np.mean(valores))
-    desv = float(np.std(valores, ddof=1))
-    q1 = float(np.percentile(valores, 25))
-    q3 = float(np.percentile(valores, 75))
+    media = valores.mean()
+    desv = valores.std(ddof=1)
+    q1 = valores.quantile(0.25, interpolation="linear")
+    q3 = valores.quantile(0.75, interpolation="linear")
     return {
-        "n": len(valores),
+        "n": valores.len(),
         "media": media,
-        "rango": float(np.max(valores) - np.min(valores)),
-        "minimo": float(np.min(valores)),
-        "maximo": float(np.max(valores)),
-        "varianza": desv**2,
+        "rango": valores.max() - valores.min(),
+        "minimo": valores.min(),
+        "maximo": valores.max(),
+        "varianza": valores.var(ddof=1),
         "desv_est": desv,
         # El CV no esta definido con media cero.
         "CV": (desv / media * 100) if media != 0 else float("nan"),
@@ -151,7 +152,7 @@ def serie_valida(df: pl.DataFrame, columna: str) -> pl.DataFrame:
     return df.filter(pl.col(columna).is_not_null())
 
 
-def alertas_de_coherencia(columna: str, valores: np.ndarray) -> list[str]:
+def alertas_de_coherencia(columna: str, valores: pl.Series) -> list[str]:
     """
     Devuelve los avisos aplicables a una variable.
 
@@ -159,17 +160,17 @@ def alertas_de_coherencia(columna: str, valores: np.ndarray) -> list[str]:
     """
     avisos = []
     if columna == "edad_primer_union":
-        imposibles = int((valores < 10).sum())
+        imposibles = (valores < 10).sum()
         if imposibles:
             avisos.append(
-                f"{imposibles:,} valores ({100 * imposibles / len(valores):.1f}%) "
+                f"{imposibles:,} valores ({100 * imposibles / valores.len():.1f}%) "
                 f"son menores a 10. Una edad a la primera union no puede serlo."
             )
     if columna == "num_hijos":
-        distintos = np.unique(valores)
-        if len(distintos) <= 6:
+        distintos = valores.unique().sort()
+        if distintos.len() <= 6:
             avisos.append(
-                f"solo toma {len(distintos)} valores distintos {distintos.tolist()}. "
+                f"solo toma {distintos.len()} valores distintos {distintos.to_list()}. "
                 f"Se comporta como un codigo, no como un conteo."
             )
     return avisos
@@ -232,7 +233,7 @@ def imprimir_variabilidad(columna: str, con: dict, sin: dict, total: dict) -> No
                 f"    {nombre:<16}{total[clave]:>14,.2f}{con[clave]:>16,.2f}{sin[clave]:>16,.2f}"
             )
 
-    if not (np.isnan(con["CV"]) or np.isnan(sin["CV"])):
+    if not (math.isnan(con["CV"]) or math.isnan(sin["CV"])):
         razon = con["CV"] / sin["CV"] if sin["CV"] else float("nan")
         print(f"\n    Razon de CV (con/sin): {razon:.2f}")
 
@@ -251,10 +252,8 @@ def seccion_localizacion(df: pl.DataFrame) -> None:
 
     for columna in VARIABLES_CUANTITATIVAS:
         sub = serie_valida(df, columna)
-        valores = sub[columna].to_numpy()
-        pesos = sub["factor_expansion"].to_numpy()
-        m = medidas_localizacion(valores, pesos)
-        imprimir_localizacion(columna, m, alertas_de_coherencia(columna, valores))
+        m = medidas_localizacion(sub[columna], sub["factor_expansion"])
+        imprimir_localizacion(columna, m, alertas_de_coherencia(columna, sub[columna]))
 
 
 def seccion_variabilidad(df: pl.DataFrame) -> None:
@@ -267,12 +266,12 @@ def seccion_variabilidad(df: pl.DataFrame) -> None:
 
     for columna in VARIABLES_CUANTITATIVAS:
         sub = serie_valida(df, columna)
-        total = medidas_variabilidad(sub[columna].to_numpy())
+        total = medidas_variabilidad(sub[columna])
         con = medidas_variabilidad(
-            sub.filter(pl.col("sufrio_violencia_pareja") == 1)[columna].to_numpy()
+            sub.filter(pl.col("sufrio_violencia_pareja") == 1)[columna]
         )
         sin = medidas_variabilidad(
-            sub.filter(pl.col("sufrio_violencia_pareja") == 0)[columna].to_numpy()
+            sub.filter(pl.col("sufrio_violencia_pareja") == 0)[columna]
         )
         imprimir_variabilidad(columna, con, sin, total)
 
