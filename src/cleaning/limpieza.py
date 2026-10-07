@@ -19,7 +19,12 @@ import polars as pl
 
 # .parent.parent.parent sube de src/cleaning/ a la raiz del proyecto.
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from config.rutas import RUTA_DATA_PROCESSED, RUTA_DATA_RAW
+from config.rutas import (
+    RUTA_DATA_PROCESSED,
+    RUTA_DATA_RAW,
+    RUTA_ENDIREH_LIMPIO,
+    RUTA_ENDIREH_LIMPIO_CSV,
+)
 
 # --------------------------------------------------------------------------
 # Configuracion
@@ -294,8 +299,8 @@ def guardar(df: pl.DataFrame) -> None:
     graficas.
     """
     RUTA_DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
-    df.write_parquet(RUTA_DATA_PROCESSED / "endireh_limpio.parquet")
-    df.write_csv(RUTA_DATA_PROCESSED / "endireh_limpio.csv")
+    df.write_parquet(RUTA_ENDIREH_LIMPIO)
+    df.write_csv(RUTA_ENDIREH_LIMPIO_CSV)
     log(f"Guardado en {RUTA_DATA_PROCESSED}: {df.height:,} filas x {df.width} columnas")
 
 

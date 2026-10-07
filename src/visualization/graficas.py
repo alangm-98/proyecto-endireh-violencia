@@ -26,7 +26,7 @@ import numpy as np
 import polars as pl
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from config.rutas import BASE_DIR, RUTA_DATA_PROCESSED, RUTA_FIGURAS
+from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
 
 # Paleta comun a todas las figuras.
 SUPERFICIE = "#fcfcfb"
@@ -158,15 +158,13 @@ def figura_01_distribucion_edad(df: pl.DataFrame) -> None:
 
     Sombrea el tramo de valores menores a 10 y lo anota con su porcentaje.
     """
-    valores = df.filter(pl.col("edad_primer_union").is_not_null())[
-        "edad_primer_union"
-    ].to_numpy()
-    imposibles = int((valores < 10).sum())
+    valores = df["edad_primer_union"].drop_nulls()
+    imposibles = (valores < 10).sum()
 
     fig, ax = plt.subplots(figsize=(9, 5))
     # Un bin por cada valor entero.
     ax.hist(
-        valores,
+        valores.to_numpy(),
         bins=np.arange(0, valores.max() + 2, 1),
         color=AZUL,
         edgecolor=SUPERFICIE,
@@ -414,12 +412,12 @@ def figura_05_escolaridad(df: pl.DataFrame) -> None:
 
 
 def generar_graficas() -> None:
-    ruta = RUTA_DATA_PROCESSED / "endireh_limpio.parquet"
-    if not ruta.exists():
+    if not RUTA_ENDIREH_LIMPIO.exists():
         raise FileNotFoundError(
-            f"No existe {ruta}. Ejecuta antes: python3 src/cleaning/limpieza.py"
+            f"No existe {RUTA_ENDIREH_LIMPIO}. "
+            "Ejecuta antes: python3 src/cleaning/limpieza.py"
         )
-    df = pl.read_parquet(ruta)
+    df = pl.read_parquet(RUTA_ENDIREH_LIMPIO)
     print(f"[graficas] Dataset: {df.height:,} filas. Guardando en {RUTA_FIGURAS}")
 
     figura_01_distribucion_edad(df)

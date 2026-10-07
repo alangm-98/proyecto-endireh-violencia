@@ -16,3 +16,8 @@ RUTA_DATA_INPUT_MODEL = BASE_DIR / "data" / "data-input-model"
 RUTA_DATA_MODEL = BASE_DIR / "data" / "data-model"
 # Ruta a la carpeta de figuras generadas por el análisis (PNG)
 RUTA_FIGURAS = BASE_DIR / "reports" / "figuras"
+
+# Ruta al dataset limpio en Parquet (entrada del EDA y de las gráficas)
+RUTA_ENDIREH_LIMPIO = RUTA_DATA_PROCESSED / "endireh_limpio.parquet"
+# Ruta al dataset limpio en CSV
+RUTA_ENDIREH_LIMPIO_CSV = RUTA_DATA_PROCESSED / "endireh_limpio.csv"

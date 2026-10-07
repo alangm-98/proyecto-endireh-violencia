@@ -24,7 +24,7 @@ import numpy as np
 import polars as pl
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from config.rutas import RUTA_DATA_PROCESSED
+from config.rutas import RUTA_ENDIREH_LIMPIO
 
 # Variables cuantitativas del dataset; ingreso_pareja es la unica continua.
 VARIABLES_CUANTITATIVAS = ["edad_primer_union", "num_hijos", "ingreso_pareja"]
@@ -349,13 +349,13 @@ def seccion_prevalencia(df: pl.DataFrame) -> None:
 
 def ejecutar_eda() -> None:
     """Carga el dataset procesado e imprime el analisis completo."""
-    ruta = RUTA_DATA_PROCESSED / "endireh_limpio.parquet"
-    if not ruta.exists():
+    if not RUTA_ENDIREH_LIMPIO.exists():
         raise FileNotFoundError(
-            f"No existe {ruta}. Ejecuta antes: python3 src/cleaning/limpieza.py"
+            f"No existe {RUTA_ENDIREH_LIMPIO}. "
+            "Ejecuta antes: python3 src/cleaning/limpieza.py"
         )
 
-    df = pl.read_parquet(ruta)
+    df = pl.read_parquet(RUTA_ENDIREH_LIMPIO)
     titulo("ANÁLISIS EXPLORATORIO DE DATOS - ENDIREH 2021")
     print(f"\nRegistros: {df.height:,}   Variables: {df.width}")
     print(
