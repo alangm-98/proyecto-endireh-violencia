@@ -288,14 +288,20 @@ def seccion_variabilidad(
         imprimir_variabilidad(columna, con, sin, total)
 
 
-def seccion_cualitativas(df: pl.DataFrame) -> None:
-    """Imprime moda y tabla de frecuencias de las variables cualitativas."""
+def seccion_cualitativas(
+    df: pl.DataFrame, columnas: list[str] = VARIABLES_CUALITATIVAS
+) -> None:
+    """
+    Imprime la moda y la tabla de frecuencias de las columnas indicadas.
+
+    Sin el argumento columnas recorre las variables cualitativas del módulo.
+    """
     titulo("VARIABLES CUALITATIVAS (moda y frecuencias)")
     print("\nEn una variable cualitativa la única medida de tendencia central")
     print("válida es la moda. En una ordinal además tiene sentido la mediana,")
     print("pero nunca la media.")
 
-    for columna in VARIABLES_CUALITATIVAS:
+    for columna in columnas:
         resumen = (
             df.group_by(columna)
             .agg(
