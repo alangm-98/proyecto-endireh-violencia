@@ -281,7 +281,7 @@ def seccion_concentracion(df: pl.DataFrame) -> None:
     """
     Imprime el Gini de casos, población y prevalencia entre las entidades.
 
-    Agrega dos lecturas de la curva de Lorenz: la parte del total que reúne la
+    Agrega la correlación de Pearson entre casos y población y dos lecturas de la curva de Lorenz: la parte del total que reúne la
     mitad de las entidades con valores más bajos y la que reúnen las cinco con
     valores más altos.
     """
@@ -299,6 +299,11 @@ def seccion_concentracion(df: pl.DataFrame) -> None:
     print(f"    {'-' * 32}")
     for nombre, valores in series:
         print(f"    {nombre:<22}{gini(valores):>10.4f}")
+
+    correlacion = tabla.select(
+        pl.corr("casos_ponderados", "poblacion_ponderada")
+    ).item()
+    print(f"\nCorrelación entre casos y población por entidad: {correlacion:.3f}")
 
     casos, poblacion = (curva_lorenz(valores)[1] for _, valores in series[:2])
     print(f"\n    {'Parte del total que reúnen':<34}{'Casos':>10}{'Población':>12}")
