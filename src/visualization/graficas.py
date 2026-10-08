@@ -1,7 +1,7 @@
 """
 Gráficas del análisis exploratorio de la ENDIREH 2021.
 
-Construye nueve figuras y las guarda en reports/figuras/:
+Construye diez figuras y las guarda en reports/figuras/:
 
     01_distribucion_edad_primer_union.png
     02_ingreso_por_violencia.png
@@ -12,6 +12,7 @@ Construye nueve figuras y las guarda en reports/figuras/:
     07_boxplot_ingreso_por_violencia.png
     08_heterogeneidad_iqv.png
     09_curva_lorenz_entidades.png
+    10_estado_conyugal_poblacion_y_casos.png
 
 Uso:
     python3 src/visualization/graficas.py
@@ -35,9 +36,11 @@ from config.rutas import BASE_DIR, RUTA_ENDIREH_LIMPIO, RUTA_FIGURAS
 from src.visualization.eda import medidas_localizacion
 from src.visualization.indices import (
     curva_lorenz,
+    entropia_shannon,
     gini,
     tabla_entidades,
     tabla_heterogeneidad,
+    tabla_sintesis,
 )
 
 # Paleta común a todas las figuras.
@@ -687,6 +690,76 @@ def figura_09_curva_lorenz(df: pl.DataFrame) -> None:
     guardar(fig, "09_curva_lorenz_entidades.png")
 
 
+def figura_10_sintesis_estado_conyugal(df: pl.DataFrame) -> None:
+    """
+    Barras con la parte de la población y de los casos en cada estado conyugal.
+
+    Marca el reparto igual entre categorías y anota en la leyenda la entropía y
+    el Gini de cada distribución.
+    """
+    tabla = tabla_sintesis(df)
+    categorias = [str(x) for x in tabla["estado_civil_desc"].to_list()]
+    k = len(categorias)
+    series = [
+        ("Casos reportados", tabla["casos"], NARANJA, -1),
+        ("Población", tabla["poblacion"], AZUL, 1),
+    ]
+
+    y = np.arange(k)
+    alto = 0.38
+    fig, ax = plt.subplots(figsize=(9, 5.6))
+    for nombre, valores, color, lado in series:
+        partes = (100 * valores / valores.sum()).to_list()
+        ax.barh(
+            y + lado * alto / 2,
+            partes,
+            height=alto,
+            color=color,
+            label=f"{nombre}: entropía {entropia_shannon(valores):.2f}, "
+            f"Gini {gini(valores):.3f}",
+        )
+        for yi, parte in zip(y, partes):
+            ax.text(
+                parte + 0.5,
+                yi + lado * alto / 2,
+                f"{parte:.1f}%",
+                va="center",
+                fontsize=9,
+                color=TINTA_SUAVE,
+                bbox=dict(facecolor=SUPERFICIE, edgecolor="none", pad=1.5),
+            )
+    ax.axvline(
+        100 / k,
+        color=TINTA_SUAVE,
+        linewidth=1.2,
+        linestyle=":",
+        zorder=0,
+        label=f"Reparto igual: {100 / k:.1f}%",
+    )
+
+    ax.set_yticks(y, categorias)
+    ax.set_xlim(0, 42)
+    preparar_ejes(ax, eje_valor="x")
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(
+        handles[::-1], labels[::-1], frameon=False, loc="lower right", fontsize=9.5
+    )
+    titular(
+        ax,
+        "Población y casos de violencia de pareja por estado conyugal",
+        "Parte del total que corresponde a cada categoría, frente al reparto igual",
+    )
+    ax.set_xlabel("Porcentaje del total (%)")
+    pie_de_figura(
+        ax,
+        f"ENDIREH 2021 (INEGI). n = {df.height:,} registros ponderados por "
+        "factor_expansion; los casos son la violencia reportada\nen la encuesta. "
+        f"Entropía en bits. Máximos con {k} categorías: entropía de "
+        f"{np.log2(k):.2f} y Gini de {(k - 1) / k:.3f}.",
+    )
+    guardar(fig, "10_estado_conyugal_poblacion_y_casos.png")
+
+
 # --------------------------------------------------------------------------
 
 
@@ -708,7 +781,8 @@ def generar_graficas() -> None:
     figura_07_boxplot_ingreso(df)
     figura_08_heterogeneidad(df)
     figura_09_curva_lorenz(df)
-    print("[graficas] Listo: 9 figuras generadas.")
+    figura_10_sintesis_estado_conyugal(df)
+    print("[graficas] Listo: 10 figuras generadas.")
 
 
 if __name__ == "__main__":

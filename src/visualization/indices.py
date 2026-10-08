@@ -315,6 +315,72 @@ def seccion_concentracion(df: pl.DataFrame) -> None:
 
 
 # --------------------------------------------------------------------------
+# Síntesis
+# --------------------------------------------------------------------------
+
+
+def tabla_sintesis(
+    df: pl.DataFrame, columna: str = "estado_civil_desc"
+) -> pl.DataFrame:
+    """
+    Devuelve una fila por categoría con su población y sus casos ponderados.
+
+    Los casos suman el factor_expansion de las mujeres que reportaron violencia
+    de pareja. Las categorías van de menor a mayor población.
+    """
+    return (
+        df.filter(pl.col(columna).is_not_null())
+        .group_by(columna)
+        .agg(
+            pl.col("factor_expansion").sum().alias("poblacion"),
+            pl.col("factor_expansion")
+            .filter(pl.col("sufrio_violencia_pareja") == 1)
+            .sum()
+            .alias("casos"),
+        )
+        .sort("poblacion")
+    )
+
+
+def seccion_sintesis(
+    df: pl.DataFrame, columna: str = "estado_civil_desc", solo_casos: bool = False
+) -> None:
+    """
+    Imprime la entropía y el Gini de las frecuencias ponderadas de una variable.
+
+    Con solo_casos=True usa los casos de violencia reportada en lugar de la
+    población. Cada índice aparece junto a su máximo: log2(k) y (k-1)/k.
+    """
+    peso = "casos" if solo_casos else "poblacion"
+    base = "casos de violencia reportada" if solo_casos else "población estimada"
+    tabla = tabla_sintesis(df, columna).sort(peso)
+    frecuencias = tabla[peso]
+    k = frecuencias.len()
+
+    titulo(f"GINI Y ENTROPÍA DE {columna} ({base})")
+    print(f"\n    {'Categoría':<20}{'Mujeres':>14}{'Proporción':>13}")
+    print(f"    {'-' * 47}")
+    for fila in tabla.iter_rows(named=True):
+        print(
+            f"    {str(fila[columna]):<20}{fila[peso]:>14,.0f}"
+            f"{100 * fila[peso] / frecuencias.sum():>12.1f}%"
+        )
+
+    indices = [
+        (
+            "Entropía de Shannon (bits)",
+            entropia_shannon(frecuencias),
+            float(np.log2(k)),
+        ),
+        ("Gini de las frecuencias", gini(frecuencias), (k - 1) / k),
+    ]
+    print(f"\n    {'Índice':<30}{'Valor':>9}{'Máximo':>10}{'Valor / máximo':>18}")
+    print(f"    {'-' * 67}")
+    for nombre, valor, maximo in indices:
+        print(f"    {nombre:<30}{valor:>9.4f}{maximo:>10.4f}{valor / maximo:>18.4f}")
+
+
+# --------------------------------------------------------------------------
 # Comprobación
 # --------------------------------------------------------------------------
 
